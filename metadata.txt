@@ -1,0 +1,16 @@
+[general]
+name=Photo To GeoJSON
+qgisMinimumVersion=4.00
+description=Converts photos with GPS information into a GeoJSON point layer.
+version=1.0
+author=GeoHarvester
+email=your.hml@gamil.com
+about=Reads EXIF data of photos in a selected folder. Photos with coordinates are converted to a GeoJSON file and loaded into the map, while those without are recorded in a log file.
+category=Plugins
+type=plugins
+tags=photo, geotag
+homepage=https://www.facebook.com/GeoHarvester?locale=zh_TW
+repository=https://www.facebook.com/GeoHarvester?locale=zh_TW
+tracker=https://www.facebook.com/GeoHarvester?locale=zh_TW
+icon=icon.png
+experimental=False
