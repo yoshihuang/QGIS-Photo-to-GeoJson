@@ -1,9 +1,11 @@
 import os
-from PyQt6.QtWidgets import (QFileDialog, QMessageBox, QDialog, 
+# 🌟 Downgrade fix 1: Changed PyQt6 to PyQt5, and moved QAction back to QtWidgets
+from PyQt5.QtWidgets import (QFileDialog, QMessageBox, QDialog, 
                              QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit, 
-                             QProgressBar, QApplication)
-from PyQt6.QtCore import QSettings, QMetaType
-from PyQt6.QtGui import QColor, QAction
+                             QProgressBar, QApplication, QAction)
+# 🌟 Downgrade fix 2: Imported QVariant to support QGIS 3.x attribute fields
+from PyQt5.QtCore import QSettings, QVariant
+from PyQt5.QtGui import QColor
 from qgis.core import (QgsProject, QgsVectorLayer, QgsFeature, 
                        QgsGeometry, QgsPointXY, QgsFields, QgsField,
                        QgsVectorFileWriter, QgsSimpleMarkerSymbolLayer, 
@@ -13,7 +15,7 @@ from PIL import Image
 from PIL.ExifTags import TAGS, GPSTAGS
 
 # ==========================================
-# 1. 輕量級多國語系字典 (i18n Dictionary)
+# 1. Lightweight Multilingual Dictionary (i18n)
 # ==========================================
 I18N = {
     'en': {
@@ -148,7 +150,7 @@ I18N = {
         'log_success': 'Éxito: {}',
         'log_fail': 'Fallo: {}',
         'log_fail_list': '=== Lista de fallos ===',
-        'err_coord': '{}: Error de conversión de coordenadas ({})',
+        'err_coord': '{}: Error de conversion de coordenadas ({})',
         'err_nogps': '{}: Sin información GPS',
         'err_direction': '{}: Fallo al extraer la dirección de la imagen',
         'msg_done_title': 'Proceso completado',
@@ -157,7 +159,7 @@ I18N = {
 }
 
 # ==========================================
-# 2. 語系判斷與翻譯函式
+# 2. Locale Detection and Translation Function
 # ==========================================
 def get_translator():
     user_locale = QSettings().value("locale/userLocale", "en_US")
@@ -172,7 +174,7 @@ def get_translator():
 tr = get_translator()
 
 # ==========================================
-# 3. 插件主程式與 UI 介面
+# 3. Main Plugin Class and UI Interface
 # ==========================================
 class PhotoToGeoJSONPlugin:
     def __init__(self, iface):
@@ -292,47 +294,47 @@ class PluginDialog(QDialog):
         success_count = 0
         fail_files = []
 
-        # 建立暫存的 Memory Layer，確保所有所需欄位型別正確
+        # 🌟 Downgrade fix 3: Replace QMetaType with QVariant to ensure QGIS 3.x compatibility
         layer = QgsVectorLayer("Point?crs=epsg:4326", "Photos", "memory")
         provider = layer.dataProvider()
         provider.addAttributes([
-            QgsField("FileName", QMetaType.Type.QString),
-            QgsField("DateTime", QMetaType.Type.QString),
-            QgsField("CameraMake", QMetaType.Type.QString),
-            QgsField("Azimuth", QMetaType.Type.Double),
-            QgsField("Longitude", QMetaType.Type.Double),
-            QgsField("Latitude", QMetaType.Type.Double),
-            QgsField("FullPath", QMetaType.Type.QString)
+            QgsField("FileName", QVariant.String),
+            QgsField("DateTime", QVariant.String),
+            QgsField("CameraMake", QVariant.String),
+            QgsField("Azimuth", QVariant.Double),
+            QgsField("Longitude", QVariant.Double),
+            QgsField("Latitude", QVariant.Double),
+            QgsField("FullPath", QVariant.String)
         ])
         layer.updateFields()
 
         features = []
 
-        # 處理迴圈
+        # Processing loop
         for i, filename in enumerate(photo_files):
-            # 取得照片原始硬碟路徑
+            # Get the original absolute file path of the photo
             path = os.path.join(input_folder, filename)
-            # 🌟 這裡修改了：規範斜線方向，並強制加上 file:/// 前綴，構成完整的絕對 URL (/// 對 Windows 很重要)
+            # Normalize slash direction and forcefully add the file:/// prefix
             full_path_url = 'file:///' + os.path.normpath(path).replace('\\', '/')
             
             exif, gps = self.get_exif_gps_azimuth(path)
 
             if gps and 'GPSLatitude' in gps and 'GPSLongitude' in gps:
                 try:
-                    # 計算坐標
+                    # Calculate coordinates
                     lat = self.convert_to_deg(gps['GPSLatitude'])
                     lon = self.convert_to_deg(gps['GPSLongitude'])
                     if gps.get('GPSLatitudeRef') == 'S': lat = -lat
                     if gps.get('GPSLongitudeRef') == 'W': lon = -lon
 
-                    # 提取方向角
+                    # Extract azimuth (image direction)
                     azimuth = 0.0
                     if 'GPSImgDirection' in gps:
                         azimuth = self.convert_azimuth(gps['GPSImgDirection'])
                     elif exif and 'ImageDirection' in exif:
                         azimuth = self.convert_azimuth(exif['ImageDirection'])
 
-                    # 建立圖徵並填入所有屬性，包括新的完整路徑 URL
+                    # Create feature and populate all attributes
                     fet = QgsFeature(layer.fields())
                     fet.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(lon, lat)))
                     
@@ -343,7 +345,7 @@ class PluginDialog(QDialog):
                         azimuth,
                         lon,
                         lat,
-                        full_path_url # 🌟 使用 URL 欄位值
+                        full_path_url
                     ]
                     
                     fet.setAttributes(attributes)
@@ -354,62 +356,56 @@ class PluginDialog(QDialog):
             else:
                 fail_files.append(tr('err_nogps', filename))
 
-            # 更新進度條並保持 UI 響應
+            # Update progress bar and keep UI responsive
             self.progress.setValue(i + 1)
             QApplication.processEvents() 
 
-        # 寫入圖徵到 Memory Layer
+        # Write features to the Memory Layer
         if features:
             provider.addFeatures(features)
             layer.updateExtents()
             
-            # 將 Memory Layer 儲存為 GeoJSON
+            # Save the Memory Layer as a GeoJSON file
             options = QgsVectorFileWriter.SaveVectorOptions()
             options.driverName = "GeoJSON"
             QgsVectorFileWriter.writeAsVectorFormatV3(layer, output_file, QgsProject.instance().transformContext(), options)
 
-            # --- 載入 GeoJSON 檔至地圖 ---
+            # --- Load the GeoJSON file into the map ---
             geojson_layer = QgsVectorLayer(output_file, os.path.basename(output_file), "ogr")
             if geojson_layer.isValid():
-                # 1. 設定箭頭符號
+                # 1. Set arrow symbol
                 arrow_symbol_layer = QgsSimpleMarkerSymbolLayer()
                 arrow_symbol_layer.setShape(QgsSimpleMarkerSymbolLayer.Arrow)
                 arrow_symbol_layer.setSize(5.0) 
                 arrow_symbol_layer.setColor(QColor(255, 0, 0, 255)) 
-                
-                # 這裡修正了 4.0 的最新 API 寫法 (setStrokeColor)
                 arrow_symbol_layer.setStrokeColor(QColor(0, 0, 0, 255))
 
-                # 建立點符號並應用該符號層
+                # Create point symbol and apply the symbol layer
                 point_symbol = QgsMarkerSymbol()
                 point_symbol.changeSymbolLayer(0, arrow_symbol_layer)
 
-                # 設定符號屬性旋轉 (與 "Azimuth" 欄位繫結)
+                # Set symbol rotation property (bound to the "Azimuth" field)
                 property_rot = QgsProperty.fromExpression("to_real(\"Azimuth\")")
                 point_symbol.symbolLayer(0).setDataDefinedProperty(QgsSymbolLayer.PropertyAngle, property_rot)
 
-                # 建立單一符號渲染器並應用符號
+                # Create a single symbol renderer and apply the symbol
                 renderer = QgsSingleSymbolRenderer(point_symbol)
                 geojson_layer.setRenderer(renderer)
                 
                 # ==========================================
-                # 🌟 修復 Identify 工具與滑鼠懸停照片顯示路徑問題
+                # Set up the Identify tool and Map Tip photo preview
                 # ==========================================
-                # 取得 FullPath 欄位的索引值
                 field_idx = geojson_layer.fields().indexOf("FullPath")
                 if field_idx != -1:
-                    # 設定 Identify 工具為圖片檢視器 (API 名稱應為 ExternalResource)
-                    # 並且將儲存類型設定為絕對路徑 (RelativeStorage: 0)，確保 file:/// 被正確理解
                     setup = QgsEditorWidgetSetup('ExternalResource', {
-                        'DocumentViewer': 1,       # 1 代表顯示圖片
-                        'DocumentViewerWidth': 0,  # 0 代表自動調整寬度
-                        'DocumentViewerHeight': 300, # 設定預覽高度為 300px
-                        'RelativeStorage': 0        # 🌟 關鍵修正：強制使用絕對路徑 URL
+                        'DocumentViewer': 1,       
+                        'DocumentViewerWidth': 0,  
+                        'DocumentViewerHeight': 300, 
+                        'RelativeStorage': 0        
                     })
                     geojson_layer.setEditorWidgetSetup(field_idx, setup)
 
-                # 設定 Map Tip (滑鼠懸停提示) 自動顯示 HTML 圖片與資訊
-                # 🌟 修改了 HTML img 標籤的 src 屬性，直接使用已是 URL 的 [% "FullPath" %]
+                # Configure Map Tip (hover preview)
                 map_tip_html = """
                 <div style="text-align:center;">
                   <b>[% "FileName" %]</b><br>
@@ -420,11 +416,11 @@ class PluginDialog(QDialog):
                 geojson_layer.setMapTipTemplate(map_tip_html)
                 # ==========================================
 
-                # 將設定好的圖層加入地圖
+                # Add the configured layer to the map
                 QgsProject.instance().addMapLayer(geojson_layer)
                 geojson_layer.triggerRepaint()
 
-        # 產出 Log 檔
+        # Generate Log file
         log_path = os.path.splitext(output_file)[0] + "_log.txt"
         with open(log_path, 'w', encoding='utf-8') as f:
             f.write(tr('log_total', total_photos) + "\n")
