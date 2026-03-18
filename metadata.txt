@@ -1,8 +1,8 @@
 [general]
 name=Photo To GeoJSON
-qgisMinimumVersion=4.00
+qgisMinimumVersion=3.0
 description=Converts photos with GPS information into a GeoJSON point layer.
-version=2.0
+version=1.01
 author=聚禾工程顧問有限公司
 email=yoshi.hml@gmail.com
 about=Reads EXIF data of photos in a selected folder. Photos with coordinates are converted to a GeoJSON file and loaded into the map, while those without are recorded in a log message.
@@ -14,4 +14,4 @@ repository=https://github.com/yoshihuang/QGIS-Photo-to-GeoJson
 tracker=https://github.com/yoshihuang/QGIS-Photo-to-GeoJson/issues
 icon=icon.png
 experimental=False
-changelog=2.0: Upgraded to PyQt6 and QMetaType for full QGIS 4.x compatibility.
+changelog=1.01: Initial release with QGIS 3.x compatibility.
