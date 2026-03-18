@@ -1,11 +1,9 @@
 import os
-# 🌟 Downgrade fix 1: Changed PyQt6 to PyQt5, and moved QAction back to QtWidgets
-from PyQt5.QtWidgets import (QFileDialog, QMessageBox, QDialog, 
+from PyQt6.QtWidgets import (QFileDialog, QMessageBox, QDialog, 
                              QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit, 
-                             QProgressBar, QApplication, QAction)
-# 🌟 Downgrade fix 2: Imported QVariant to support QGIS 3.x attribute fields
-from PyQt5.QtCore import QSettings, QVariant
-from PyQt5.QtGui import QColor
+                             QProgressBar, QApplication)
+from PyQt6.QtCore import QSettings, QMetaType
+from PyQt6.QtGui import QColor, QAction
 from qgis.core import (QgsProject, QgsVectorLayer, QgsFeature, 
                        QgsGeometry, QgsPointXY, QgsFields, QgsField,
                        QgsVectorFileWriter, QgsSimpleMarkerSymbolLayer, 
@@ -294,17 +292,16 @@ class PluginDialog(QDialog):
         success_count = 0
         fail_files = []
 
-        # 🌟 Downgrade fix 3: Replace QMetaType with QVariant to ensure QGIS 3.x compatibility
         layer = QgsVectorLayer("Point?crs=epsg:4326", "Photos", "memory")
         provider = layer.dataProvider()
         provider.addAttributes([
-            QgsField("FileName", QVariant.String),
-            QgsField("DateTime", QVariant.String),
-            QgsField("CameraMake", QVariant.String),
-            QgsField("Azimuth", QVariant.Double),
-            QgsField("Longitude", QVariant.Double),
-            QgsField("Latitude", QVariant.Double),
-            QgsField("FullPath", QVariant.String)
+            QgsField("FileName", QMetaType.Type.QString),
+            QgsField("DateTime", QMetaType.Type.QString),
+            QgsField("CameraMake", QMetaType.Type.QString),
+            QgsField("Azimuth", QMetaType.Type.Double),
+            QgsField("Longitude", QMetaType.Type.Double),
+            QgsField("Latitude", QMetaType.Type.Double),
+            QgsField("FullPath", QMetaType.Type.QString)
         ])
         layer.updateFields()
 
